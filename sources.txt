@@ -1,0 +1,6 @@
+# Add one authorized/public M3U playlist URL per line.
+# Lines starting with # are ignored.
+#
+# Example legal public playlist:
+https://iptv-org.github.io/iptv/index.m3u
+

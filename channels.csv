@@ -1,0 +1,6 @@
+# Optional manual channels in CSV format:
+# name,url,group,logo,tvg_id
+#
+# Example:
+# My Camera,http://192.168.1.10/live.m3u8,Home,,
+
