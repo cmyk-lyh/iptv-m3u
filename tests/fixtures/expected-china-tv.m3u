@@ -1,0 +1,7 @@
+#EXTM3U
+#EXTINF:-1 tvg-logo="https://example.com/hunan.png" group-title="China",湖南卫视
+https://example.com/hunan.m3u8
+#EXTINF:-1 tvg-logo="https://example.com/movie.png" group-title="Movies",中国电影
+https://example.com/movie.m3u8
+#EXTINF:-1 tvg-logo="https://example.com/anime.png" group-title="Kids",动漫频道
+https://example.com/anime.m3u8

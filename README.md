@@ -65,6 +65,18 @@ python3 build_playlist.py --preset china-tv --check --output playlist.m3u
 python3 build_playlist.py --output playlist.m3u --limit 20
 ```
 
+本地验证中国频道筛选规则：
+
+```bash
+python3 build_playlist.py \
+  --sources tests/fixtures/empty-sources.txt \
+  --channels tests/fixtures/china-tv-channels.csv \
+  --preset china-tv \
+  --require-logo \
+  --output /tmp/china-tv-test.m3u
+diff -u tests/fixtures/expected-china-tv.m3u /tmp/china-tv-test.m3u
+```
+
 ## 发布到 Gitee
 
 先在 Gitee 创建一个公开仓库，比如 `iptv-subscribe`，然后克隆到本机：
