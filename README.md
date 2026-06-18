@@ -51,6 +51,12 @@ python3 build_playlist.py --output playlist.m3u
 python3 build_playlist.py --output playlist.m3u --check
 ```
 
+如果只想生成中国各省卫视、电影、动漫，并要求带台标：
+
+```bash
+python3 build_playlist.py --preset china-tv --require-logo --check --output playlist.m3u
+```
+
 如果只想先测试前 20 个频道：
 
 ```bash
@@ -93,8 +99,10 @@ GitHub Actions 会：
 
 1. 每 6 小时自动运行一次。
 2. 读取 `sources.txt`。
-3. 生成 `playlist.m3u`。
-4. 自动提交回仓库。
+3. 只保留中国相关的卫视、电影、动漫/少儿频道。
+4. 要求频道带 `tvg-logo` 台标。
+5. 探测当前可访问的直播流。
+6. 生成 `playlist.m3u` 并自动提交回仓库。
 
 也可以在 GitHub 仓库页面手动运行：
 

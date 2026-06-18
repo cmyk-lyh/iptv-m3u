@@ -18,6 +18,37 @@ from typing import Iterable
 EXTINF_RE = re.compile(r"^#EXTINF:(?P<meta>.*?),(?P<name>.*)$", re.IGNORECASE)
 ATTR_RE = re.compile(r'(?P<key>[\w-]+)="(?P<value>[^"]*)"')
 URL_SCHEMES = {"http", "https", "rtmp", "rtsp"}
+CHINA_COUNTRY_CODES = {"cn", "chn", "china", "prc"}
+CHINA_TV_KEYWORDS = [
+    "卫视",
+    "电影",
+    "影视",
+    "影院",
+    "剧场",
+    "动作",
+    "经典",
+    "动漫",
+    "动画",
+    "卡通",
+    "少儿",
+    "movie",
+    "movies",
+    "film",
+    "cinema",
+    "anime",
+    "animation",
+    "cartoon",
+]
+EXCLUDED_KEYWORDS = [
+    "adult",
+    "adults",
+    "xxx",
+    "porn",
+    "erotic",
+    "成人",
+    "情色",
+    "午夜",
+]
 
 
 @dataclass(frozen=True)
@@ -185,6 +216,56 @@ def normalize_channel(channel: Channel, default_group: str, logo_map: dict[str, 
     return Channel(name=channel.name.strip(), url=channel.url.strip(), extinf=extinf, group=group)
 
 
+def channel_text(channel: Channel) -> str:
+    attrs = extinf_attrs(channel.extinf)
+    parts = [
+        channel.name,
+        channel.group,
+        attrs.get("group-title", ""),
+        attrs.get("tvg-name", ""),
+        attrs.get("tvg-id", ""),
+        attrs.get("tvg-country", ""),
+        attrs.get("country", ""),
+    ]
+    return " ".join(part for part in parts if part).casefold()
+
+
+def has_logo(channel: Channel) -> bool:
+    return bool(extinf_attrs(channel.extinf).get("tvg-logo", "").strip())
+
+
+def has_chinese_text(value: str) -> bool:
+    return any("\u4e00" <= char <= "\u9fff" for char in value)
+
+
+def is_china_related(channel: Channel) -> bool:
+    attrs = extinf_attrs(channel.extinf)
+    country = attrs.get("tvg-country", "") or attrs.get("country", "")
+    country_codes = {item.strip().casefold() for item in re.split(r"[,;/|]", country) if item.strip()}
+    if country_codes & CHINA_COUNTRY_CODES:
+        return True
+    text = channel_text(channel)
+    return has_chinese_text(text) or "china" in text or "chinese" in text
+
+
+def is_excluded(channel: Channel) -> bool:
+    text = channel_text(channel)
+    return any(keyword in text for keyword in EXCLUDED_KEYWORDS)
+
+
+def matches_china_tv_preset(channel: Channel) -> bool:
+    text = channel_text(channel)
+    return is_china_related(channel) and not is_excluded(channel) and any(keyword in text for keyword in CHINA_TV_KEYWORDS)
+
+
+def apply_preset(channels: list[Channel], preset: str) -> list[Channel]:
+    if preset == "all":
+        return [channel for channel in channels if not is_excluded(channel)]
+    if preset == "china-tv":
+        return [channel for channel in channels if matches_china_tv_preset(channel)]
+    raise ValueError(f"unknown preset: {preset}")
+
+
 def dedupe(channels: Iterable[Channel]) -> list[Channel]:
     seen_urls: set[str] = set()
     result: list[Channel] = []
@@ -234,7 +315,10 @@ def build(args: argparse.Namespace) -> int:
     all_channels.extend(read_manual_channels(Path(args.channels)))
     logo_map = read_logo_map(Path(args.logos))
     normalized = [normalize_channel(channel, args.default_group, logo_map) for channel in all_channels]
-    unique = dedupe(normalized)
+    filtered = apply_preset(normalized, args.preset)
+    if args.require_logo:
+        filtered = [channel for channel in filtered if has_logo(channel)]
+    unique = dedupe(filtered)
 
     if args.check:
         checked: list[Channel] = []
@@ -260,6 +344,13 @@ def main() -> int:
     parser.add_argument("--logos", default="logos.csv", help="optional channel logo CSV")
     parser.add_argument("--output", default="playlist.m3u", help="output M3U path")
     parser.add_argument("--default-group", default="", help="group title added when a channel has no group")
+    parser.add_argument(
+        "--preset",
+        choices=["all", "china-tv"],
+        default="all",
+        help="filter preset: all, or china-tv for Chinese satellite/movie/anime channels",
+    )
+    parser.add_argument("--require-logo", action="store_true", help="keep only channels with tvg-logo")
     parser.add_argument("--timeout", type=float, default=20.0, help="source fetch timeout in seconds")
     parser.add_argument("--check", action="store_true", help="probe each stream and keep only reachable URLs")
     parser.add_argument("--probe-timeout", type=float, default=6.0, help="stream probe timeout in seconds")

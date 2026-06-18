@@ -2,5 +2,4 @@
 # Lines starting with # are ignored.
 #
 # Example legal public playlist:
-https://iptv-org.github.io/iptv/index.m3u
-
+https://iptv-org.github.io/iptv/countries/cn.m3u

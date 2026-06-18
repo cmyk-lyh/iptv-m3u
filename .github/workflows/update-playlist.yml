@@ -23,7 +23,12 @@ jobs:
 
       - name: Build playlist
         run: |
-          python build_playlist.py --output playlist.m3u
+          python build_playlist.py \
+            --preset china-tv \
+            --require-logo \
+            --check \
+            --probe-timeout 5 \
+            --output playlist.m3u
 
       - name: Commit playlist
         run: |
@@ -36,4 +41,3 @@ jobs:
             git commit -m "Update IPTV playlist"
             git push
           fi
-
