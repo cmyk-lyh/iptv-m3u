@@ -2,6 +2,15 @@ name: Update IPTV playlist
 
 on:
   workflow_dispatch:
+    inputs:
+      check_streams:
+        description: "Probe streams from GitHub runner before publishing"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
   schedule:
     - cron: "15 */6 * * *"
 
@@ -23,11 +32,21 @@ jobs:
 
       - name: Build playlist
         run: |
-          python build_playlist.py \
-            --preset china-tv \
-            --check \
-            --probe-timeout 5 \
-            --output playlist.tmp.m3u
+          build_args=(
+            build_playlist.py
+            --preset
+            china-tv
+            --probe-timeout
+            5
+            --output
+            playlist.tmp.m3u
+          )
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.check_streams }}" = "true" ]; then
+            build_args+=(--check)
+          fi
+
+          python "${build_args[@]}"
 
           channel_count="$(grep -c '^#EXTINF:' playlist.tmp.m3u || true)"
           echo "Generated ${channel_count} channels"
