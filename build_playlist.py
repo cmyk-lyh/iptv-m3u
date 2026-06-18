@@ -31,6 +31,9 @@ CHINA_TV_KEYWORDS = [
     "动画",
     "卡通",
     "少儿",
+    "成人",
+    "情色",
+    "午夜",
     "movie",
     "movies",
     "film",
@@ -44,10 +47,7 @@ EXCLUDED_KEYWORDS = [
     "adults",
     "xxx",
     "porn",
-    "erotic",
-    "成人",
-    "情色",
-    "午夜",
+    "erotic"
 ]
 
 
