@@ -37,7 +37,7 @@ jobs:
             --preset
             china-tv
             --probe-timeout
-            5
+            10
             --output
             playlist.tmp.m3u
           )
