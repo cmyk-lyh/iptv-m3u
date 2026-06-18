@@ -16,6 +16,7 @@ from typing import Iterable
 
 
 EXTINF_RE = re.compile(r"^#EXTINF:(?P<meta>.*?),(?P<name>.*)$", re.IGNORECASE)
+ATTR_RE = re.compile(r'(?P<key>[\w-]+)="(?P<value>[^"]*)"')
 URL_SCHEMES = {"http", "https", "rtmp", "rtsp"}
 
 
@@ -137,15 +138,50 @@ def read_manual_channels(path: Path) -> list[Channel]:
     return channels
 
 
+def read_logo_map(path: Path) -> dict[str, str]:
+    if not path.exists():
+        return {}
+
+    logo_map: dict[str, str] = {}
+    with path.open("r", encoding="utf-8", newline="") as handle:
+        filtered = (line for line in handle if line.strip() and not line.lstrip().startswith("#"))
+        reader = csv.DictReader(filtered, fieldnames=["name", "logo"])
+        for row in reader:
+            name = (row.get("name") or "").strip()
+            logo = (row.get("logo") or "").strip()
+            if name and is_url(logo):
+                logo_map[normalize_name(name)] = logo
+    return logo_map
+
+
+def normalize_name(value: str) -> str:
+    return re.sub(r"\s+", "", value).casefold()
+
+
+def extinf_attrs(extinf: str) -> dict[str, str]:
+    match = EXTINF_RE.match(extinf)
+    if not match:
+        return {}
+    return {attr.group("key"): attr.group("value") for attr in ATTR_RE.finditer(match.group("meta"))}
+
+
+def add_extinf_attr(extinf: str, key: str, value: str) -> str:
+    if not value or f"{key}=" in extinf:
+        return extinf
+    return extinf.replace(",", f' {key}="{escape_attr(value)}",', 1)
+
+
 def escape_attr(value: str) -> str:
     return value.replace("\\", "\\\\").replace('"', '\\"')
 
 
-def normalize_channel(channel: Channel, default_group: str) -> Channel:
+def normalize_channel(channel: Channel, default_group: str, logo_map: dict[str, str]) -> Channel:
     group = channel.group or default_group
     extinf = channel.extinf
-    if group and "group-title=" not in extinf:
-        extinf = extinf.replace(",", f' group-title="{escape_attr(group)}",', 1)
+    attrs = extinf_attrs(extinf)
+    logo = attrs.get("tvg-logo", "") or logo_map.get(normalize_name(channel.name), "")
+    extinf = add_extinf_attr(extinf, "group-title", group)
+    extinf = add_extinf_attr(extinf, "tvg-logo", logo)
     return Channel(name=channel.name.strip(), url=channel.url.strip(), extinf=extinf, group=group)
 
 
@@ -196,7 +232,8 @@ def build(args: argparse.Namespace) -> int:
         all_channels.extend(parse_m3u(text, source_url))
 
     all_channels.extend(read_manual_channels(Path(args.channels)))
-    normalized = [normalize_channel(channel, args.default_group) for channel in all_channels]
+    logo_map = read_logo_map(Path(args.logos))
+    normalized = [normalize_channel(channel, args.default_group, logo_map) for channel in all_channels]
     unique = dedupe(normalized)
 
     if args.check:
@@ -220,6 +257,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Build an M3U playlist from authorized public sources.")
     parser.add_argument("--sources", default="sources.txt", help="text file with source M3U URLs")
     parser.add_argument("--channels", default="channels.csv", help="optional manual channel CSV")
+    parser.add_argument("--logos", default="logos.csv", help="optional channel logo CSV")
     parser.add_argument("--output", default="playlist.m3u", help="output M3U path")
     parser.add_argument("--default-group", default="", help="group title added when a channel has no group")
     parser.add_argument("--timeout", type=float, default=20.0, help="source fetch timeout in seconds")
@@ -231,4 +269,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
