@@ -41,7 +41,7 @@ CCTV-1,https://example.com/cctv1.png
 ## 使用
 
 ```bash
-cd /Users/lyh/Documents/Codex/2026-06-18/new-chat/outputs/m3u-subscription
+cd /Users/xxx/Documents/Codex/2026-06-18/new-chat/outputs/m3u-subscription
 python3 build_playlist.py --output playlist.m3u
 ```
 
