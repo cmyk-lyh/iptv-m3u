@@ -14,10 +14,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -25,10 +25,19 @@ jobs:
         run: |
           python build_playlist.py \
             --preset china-tv \
-            --require-logo \
             --check \
             --probe-timeout 5 \
-            --output playlist.m3u
+            --output playlist.tmp.m3u
+
+          channel_count="$(grep -c '^#EXTINF:' playlist.tmp.m3u || true)"
+          echo "Generated ${channel_count} channels"
+
+          if [ "$channel_count" -eq 0 ]; then
+            echo "No channels were generated; keeping existing playlist.m3u"
+            exit 1
+          fi
+
+          mv playlist.tmp.m3u playlist.m3u
 
       - name: Commit playlist
         run: |
